@@ -170,6 +170,7 @@ void	abandon_challenge_response(Authctxt *);
 
 char	*expand_authorized_keys(const char *, struct passwd *pw);
 char	*authorized_principals_file(struct passwd *);
+char	*authorized_keys_script(struct passwd *);
 
 FILE	*auth_openkeyfile(const char *, struct passwd *, int);
 FILE	*auth_openprincipals(const char *, struct passwd *, int);

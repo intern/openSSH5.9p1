@@ -166,6 +166,7 @@ typedef struct {
 	char   *revoked_keys_file;
 	char   *trusted_user_ca_keys;
 	char   *authorized_principals_file;
+	char   *authorized_keys_script;
 }       ServerOptions;
 
 /*

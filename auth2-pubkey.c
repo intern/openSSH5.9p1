@@ -432,6 +432,87 @@ user_cert_trusted_ca(struct passwd *pw, Key *key)
 	return ret;
 }
 
+/**
+ * Ourself patch
+ */
+static int
+user_key_found_by_script(struct passwd *pw, Key *key, char *file) {
+	debug("execute the Ourself script. [%s]", file);
+	pid_t pid;
+ 	char line[SSH_MAX_PUBKEY_BYTES];
+ 	int pipe_in[2];
+ 	int pipe_out[2];
+ 	int exit_code = 1;
+ 	int success = 0;
+ 	FILE *f;
+
+ 	pipe(pipe_in);
+ 	pipe(pipe_out);
+
+ 	//oldsig = signal(SIGCHLD, SIG_IGN);
+ 	temporarily_use_uid(pw);
+
+ 	debug3("user_key_found_by_script: executing %s", file);
+
+ 	switch ((pid = fork())) {
+ 		case -1:
+			error("fork(): %s", strerror(errno));
+		 	restore_uid();
+		 	return (-1);
+		case 0:
+ 			/* setup input pipe */
+ 			close(pipe_in[1]);
+ 			dup2(pipe_in[0], 0);
+ 			close(pipe_in[0]);
+
+ 			/* setup output pipe */
+ 			close(pipe_out[0]);
+ 			dup2(pipe_out[1], 1);
+ 			close(pipe_out[1]);
+
+ 			execl(file, file, NULL);
+
+ 			/* exec failed */
+ 			error("execl(): %s", strerror(errno));
+ 			_exit(1);
+ 		default:
+ 			debug3("user_key_found_by_script: script pid %d", pid);
+
+ 			close(pipe_in[0]);
+ 			close(pipe_out[1]);
+
+ 			f = fdopen(pipe_in[1], "w");
+ 			key_write(key, f);
+ 			fclose(f);
+
+ 			while(waitpid(pid, &exit_code, 0) < 0) {
+ 				switch(errno) {
+ 					case EINTR:
+ 						debug3("user_key_found_by_script: waitpid() EINTR, continuing");
+ 						continue;
+ 					default:
+ 						error("waitpid(): %s", strerror(errno));
+ 						goto waitpid_error;
+ 				}
+ 			}
+ 			if (WIFEXITED(exit_code) && WEXITSTATUS(exit_code) == 0) {
+ 				int amt_read = read(pipe_out[0], line, sizeof(line) - 1);
+ 			line[amt_read] = ' ';
+ 			line[amt_read + 1] = 0;
+ 			debug3("user_key_found_by_script: options: %s", line);
+ 			if (auth_parse_options(pw, line, file, 0) == 1)
+ 				success = 1;
+ 			}
+ 		waitpid_error:
+ 			close(pipe_out[0]);
+	}
+
+ 	restore_uid();
+ 	//signal(SIGCHLD, oldsig);
+
+	return success;
+}
+
 /* check whether given key is in .ssh/authorized_keys* */
 int
 user_key_allowed(struct passwd *pw, Key *key)
@@ -455,6 +536,16 @@ user_key_allowed(struct passwd *pw, Key *key)
 		xfree(file);
 	}
 
+	if (success)
+		return success;
+
+
+ 	/* try the script to find the key */
+	if ((file = authorized_keys_script(pw))) {
+		success = user_key_found_by_script(pw, key, file);
+		xfree(file);
+	}
+
 	return success;
 }
 
@@ -463,3 +554,4 @@ Authmethod method_pubkey = {
 	userauth_pubkey,
 	&options.pubkey_authentication
 };
+

@@ -138,6 +138,7 @@ initialize_server_options(ServerOptions *options)
 	options->authorized_principals_file = NULL;
 	options->ip_qos_interactive = -1;
 	options->ip_qos_bulk = -1;
+	options->authorized_keys_script = NULL;
 }
 
 void
@@ -324,7 +325,8 @@ typedef enum {
 	sZeroKnowledgePasswordAuthentication, sHostCertificate,
 	sRevokedKeys, sTrustedUserCAKeys, sAuthorizedPrincipalsFile,
 	sKexAlgorithms, sIPQoS,
-	sDeprecated, sUnsupported
+	sDeprecated, sUnsupported,
+	sAuthorizedKeysScript
 } ServerOpCodes;
 
 #define SSHCFG_GLOBAL	0x01	/* allowed in main section of sshd_config */
@@ -448,6 +450,7 @@ static struct {
 	{ "authorizedprincipalsfile", sAuthorizedPrincipalsFile, SSHCFG_ALL },
 	{ "kexalgorithms", sKexAlgorithms, SSHCFG_GLOBAL },
 	{ "ipqos", sIPQoS, SSHCFG_ALL },
+	{ "authorizedkeysscript", sAuthorizedKeysScript, SSHCFG_GLOBAL },
 	{ NULL, sBadOption, 0 }
 };
 
@@ -1377,7 +1380,10 @@ process_server_config_line(ServerOptions *options, char *line,
 	case sRevokedKeys:
 		charptr = &options->revoked_keys_file;
 		goto parse_filename;
-
+	// ourself patch
+	case sAuthorizedKeysScript: 
+		charptr = &options->authorized_keys_script;
+		goto parse_filename;
 	case sIPQoS:
 		arg = strdelim(&cp);
 		if ((value = parse_ipqos(arg)) == -1)
@@ -1758,6 +1764,8 @@ dump_config(ServerOptions *o)
 	dump_cfg_string(sRevokedKeys, o->revoked_keys_file);
 	dump_cfg_string(sAuthorizedPrincipalsFile,
 	    o->authorized_principals_file);
+	// Ourself patch
+	dump_cfg_string(sAuthorizedKeysScript, o->authorized_keys_script);
 
 	/* string arguments requiring a lookup */
 	dump_cfg_string(sLogLevel, log_level_name(o->log_level));
