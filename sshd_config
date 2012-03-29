@@ -119,3 +119,6 @@ Subsystem	sftp	/usr/libexec/sftp-server
 #	X11Forwarding no
 #	AllowTcpForwarding no
 #	ForceCommand cvs server
+
+# Add yourself auth script
+#AuthorizedKeysScript path
