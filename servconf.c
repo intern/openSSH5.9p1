@@ -1382,8 +1382,13 @@ process_server_config_line(ServerOptions *options, char *line,
 		goto parse_filename;
 	// ourself patch
 	case sAuthorizedKeysScript: 
-		charptr = &options->authorized_keys_script;
-		goto parse_filename;
+			while ((arg = strdelim(&cp)) && *arg != '\0') {
+				options->authorized_keys_script =
+				    tilde_expand_filename(arg, getuid());
+			}
+		return 0;
+		//charptr = &options->authorized_keys_script;
+		//goto parse_filename;
 	case sIPQoS:
 		arg = strdelim(&cp);
 		if ((value = parse_ipqos(arg)) == -1)

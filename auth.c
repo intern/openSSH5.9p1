@@ -340,6 +340,8 @@ expand_authorized_keys(const char *filename, struct passwd *pw)
 	file = percent_expand(filename, "h", pw->pw_dir,
 	    "u", pw->pw_name, (char *)NULL);
 
+	debug3("expand_authorized_keys-----pw_dir: [%s], pw-name: [%s], filename: %s, file: [%s]", pw->pw_dir, pw->pw_name, filename, file);
+
 	/*
 	 * Ensure that filename starts anchored. If not, be backward
 	 * compatible and prepend the '%h/'
